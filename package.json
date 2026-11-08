@@ -1,0 +1,8 @@
+{
+  "name": "paper-dragon",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fold a paper strip, unfold every crease to 90 degrees, get the dragon curve.",
+  "scripts": { "start": "start index.html", "test": "node --test test.js" },
+  "license": "MIT"
+}
