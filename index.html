@@ -90,7 +90,13 @@ const mix = t => `rgb(${A.map((a, i) => Math.round(a + (B[i] - a) * t)).join(','
 function draw() {
   const pts = strip(turns, deg * Math.PI / 180), m = pts.length / 2;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (let i = 0; i < pts.length; i += 2) { x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]); y0 = Math.min(y0, pts[i + 1]); y1 = Math.max(y1, pts[i + 1]); }
+  const copies = tiles ? 4 : 1;
+  // copy k is the same strip turned k quarter-turns around the start point
+  const X = (k, x, y) => [x, -y, -x, y][k], Y = (k, x, y) => [y, x, -y, -x][k];
+  for (let k = 0; k < copies; k++) for (let i = 0; i < pts.length; i += 2) {
+    const x = X(k, pts[i], pts[i + 1]), y = Y(k, pts[i], pts[i + 1]);
+    x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+  }
   // fit between the real header and panel, whatever the screen size
   const top = Math.max($('sub').getBoundingClientRect().bottom, W < 640 ? $('facts').getBoundingClientRect().bottom : 0) + 16;
   const bottom = H - $('panel').getBoundingClientRect().top + 16;
@@ -101,12 +107,12 @@ function draw() {
   g.lineCap = g.lineJoin = 'round';
   g.lineWidth = Math.max(0.6, Math.min(3, s * 0.35));
   const chunks = 48, per = Math.ceil((m - 1) / chunks);
-  for (let c = 0; c < chunks; c++) {
+  for (let k = 0; k < copies; k++) for (let c = 0; c < chunks; c++) {
     const a = c * per, b = Math.min(m - 1, a + per);
     if (a >= b) break;
-    g.strokeStyle = mix(c / (chunks - 1));
-    g.beginPath(); g.moveTo(ox + pts[a * 2] * s, oy + pts[a * 2 + 1] * s);
-    for (let i = a + 1; i <= b; i++) g.lineTo(ox + pts[i * 2] * s, oy + pts[i * 2 + 1] * s);
+    g.strokeStyle = tiles ? TILE[k] : mix(c / (chunks - 1));
+    g.beginPath(); g.moveTo(ox + X(k, pts[a * 2], pts[a * 2 + 1]) * s, oy + Y(k, pts[a * 2], pts[a * 2 + 1]) * s);
+    for (let i = a + 1; i <= b; i++) g.lineTo(ox + X(k, pts[i * 2], pts[i * 2 + 1]) * s, oy + Y(k, pts[i * 2], pts[i * 2 + 1]) * s);
     g.stroke();
   }
   const dragon = Math.abs(deg - 90) < 0.75;
@@ -117,6 +123,10 @@ function draw() {
     sub.textContent = dragon ? 'Every crease at 90°. The strip never crosses itself or repeats an edge.' : 'Fold a strip in half, again and again. Then open every crease to exactly 90°.';
   }
 }
+
+// ??? — four dragons, one per quarter-turn, fit together with no gaps and no overlaps
+const TILE = ['#23305a', '#d2412b', '#c99a2e', '#5d7f6a'];
+let tiles = false, typed = '';
 
 function setFolds(k) {
   n = Math.max(1, Math.min(16, k)); turns = creases(n);
@@ -146,6 +156,7 @@ $('more').onclick = () => setFolds(n + 1);
 $('go').onclick = () => animateTo(90);
 $('angle').oninput = e => { cancelAnimationFrame(anim); setDeg(+e.target.value); };
 addEventListener('keydown', e => {
+  if (e.key.length === 1) { typed = (typed + e.key.toLowerCase()).slice(-4); if (typed === 'tile') { typed = ''; tiles = !tiles; draw(); } }
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
   if (e.key === 'ArrowUp') setFolds(n + 1);
   else if (e.key === 'ArrowDown') setFolds(n - 1);
